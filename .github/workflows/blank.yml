@@ -1,0 +1,60 @@
+name: EKS Onboarding CI/CD
+
+on:
+  workflow_dispatch:  # Manual trigger
+  # push:
+  #   branches:
+  #     - main  # Uncomment to run on push
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  eks-onboard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      
+
+      - name: Install kubectl
+
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::270839351042:role/GittoAWS
+          aws-region: ap-southeast-2 # or your region
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Deploy (example - get EKS clusters)
+        run: aws eks list-clusters
+
+      - name: Restore kubeconfig file
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.EKS_KUBECONFIG }}" > ~/.kube/kube_ingest_apac
+          chmod 600 ~/.kube/kube_ingest_apac
+
+
+      - name: Setup Vault token
+        run: echo "${{ secrets.VAULT_TOKEN }}" > ~/.vault-token
+
+      - name: Make scripts executable
+        run: chmod +x execute-eks-efs-apac-script.sh
+
+      - name: Run onboarding script
+        env:
+          HOME: ${{ github.workspace }}
+        run: ../AWS_AUTOMATION/execute-eks-efs-apac-script.sh
+
+      - name: Upload onboarding logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: eks-onboarding-logs
+          path: ../../ci/deployment/aws/prod/apac-ase02/logs/
